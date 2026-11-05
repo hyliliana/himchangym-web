@@ -2,7 +2,7 @@ node_modules/
 .next/
 dist/
 output/
-.local/
+.local
 .env
 .env.*
 !.env.example
@@ -11,3 +11,4 @@ output/
 .vercel/
 .DS_Store
 member-login-mobile.png
+next-env.d.ts
