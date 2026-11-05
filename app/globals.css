@@ -258,3 +258,16 @@ h3 { font-size: 18px; line-height: 28px; font-weight: 700; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }
+.reservation .reservation-actions { display: flex; flex: 0 0 auto; gap: 8px; flex-wrap: wrap; }
+.reschedule-dialog { max-width: 540px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.dialog .form .help { margin: 0; }
+.preference { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; line-height: 24px; cursor: pointer; }
+.preference input { width: 20px; height: 20px; flex-shrink: 0; margin: 2px 0 0; accent-color: var(--accent); }
+.preference small { color: var(--ink-neutral); }
+@media (max-width: 600px) {
+  .reservation { flex-wrap: wrap; }
+  .reservation .reservation-actions { flex-basis: 100%; justify-content: flex-end; }
+  .reservation-actions button { flex: 1; }
+  .dialog-actions > button { flex: 1; }
+}

@@ -2,7 +2,8 @@
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
-type User = {id:number; email:string; name:string; kind:string};
+type User = {id:number; email:string; name:string; kind:string; mustChangePassword:boolean};
+type NotificationPreferences = {kakao:boolean; sms:boolean; updatedAt:string|null};
 type Pass = {id:number; typeName:string; purchasedOn:string; paidAmount:number; expiresOn:string; totalSessions:number; usedSessions:number; bookedSessions:number; remainingSessions:number; availableSessions:number; isUsable:boolean};
 type Reservation = {id:number; passId:number; typeName:string; trainerId:number; trainerName:string; startsAt:string; status:'booked'|'completed'|'cancelled'|'noshow'; note:string};
 type Trainer = {id:number; name:string; workingDays:number[]};
@@ -43,6 +44,43 @@ function CancelDialog({reservation,busy,onCancel,onKeep}:{reservation:Reservatio
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(()=>{const element=dialog.current;const trigger=document.activeElement;element?.showModal();return ()=>{element?.close();if(trigger instanceof HTMLElement && trigger.isConnected)trigger.focus({preventScroll:true});};},[]);
   return <dialog ref={dialog} className="dialog" aria-labelledby="cancel-title" aria-describedby="cancel-description" aria-busy={busy} onCancel={event=>{event.preventDefault();if(!busy)onKeep();}}><h2 id="cancel-title">예약을 취소할까요?</h2><p id="cancel-description">{time(reservation.startsAt)}<br/>{reservation.trainerName} 트레이너<br/><br/>취소해도 이용권 횟수는 차감되지 않아요.</p><button className="primary full" disabled={busy} onClick={onCancel}>{busy?'취소하고 있어요…':'예약 취소하기'}</button><button autoFocus className="secondary full" disabled={busy} onClick={onKeep}>예약 유지하기</button></dialog>;
+}
+function RescheduleDialog({reservation,trainer,pass,onClose,onChanged,onSessionExpired}:{reservation:Reservation;trainer?:Trainer;pass?:Pass;onClose:()=>void;onChanged:()=>Promise<void>;onSessionExpired:(error:unknown)=>void}) {
+  const dialog=useRef<HTMLDialogElement>(null);
+  const [day,setDay]=useState(date(reservation.startsAt).replaceAll('.','-'));
+  const [hour,setHour]=useState(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Seoul',hour:'2-digit',hourCycle:'h23'}).format(new Date(reservation.startsAt)));
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState('');
+  const off=!!trainer&&!trainer.workingDays.includes(new Date(`${day}T12:00:00+09:00`).getUTCDay());
+  const unchanged=new Date(`${day}T${hour}:00:00+09:00`).getTime()===new Date(reservation.startsAt).getTime();
+  useEffect(()=>{const el=dialog.current;const trigger=document.activeElement;el?.showModal();return()=>{el?.close();if(trigger instanceof HTMLElement&&trigger.isConnected)trigger.focus({preventScroll:true});};},[]);
+  async function submit(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();if(saving)return;setSaving(true);setError('');
+    try{await api(`member/reservations/${reservation.id}/reschedule`,'POST',{startsAt:`${day}T${hour}:00:00+09:00`});await onChanged();}
+    catch(error){if(error instanceof ApiError&&error.status===401){onClose();onSessionExpired(error);}else setError(error instanceof Error?error.message:'시간을 변경하지 못했어요. 기존 예약은 유지됩니다.');}
+    finally{setSaving(false);}
+  }
+  return <dialog ref={dialog} className="dialog reschedule-dialog" aria-labelledby="reschedule-title" aria-busy={saving} onCancel={event=>{event.preventDefault();if(!saving)onClose();}}>
+    <h2 id="reschedule-title">예약 시간 변경</h2><p>{reservation.trainerName} 트레이너 · {reservation.typeName}<br/>현재 예약: {time(reservation.startsAt)}</p>
+    <form className="form" onSubmit={submit}>
+      <div className="form-grid"><Field label="변경할 날짜"><input type="date" required value={day} disabled={saving} min={koreanToday()} max={pass?.expiresOn} onChange={event=>{setDay(event.target.value);setError('');}}/></Field><Field label="변경할 시작 시간"><select required value={hour} disabled={saving} onChange={event=>{setHour(event.target.value);setError('');}}>{Array.from({length:24},(_,n)=><option key={n} value={String(n).padStart(2,'0')}>{String(n).padStart(2,'0')}:00 ~ {String((n+1)%24).padStart(2,'0')}:00</option>)}</select></Field></div>
+      {trainer&&<p className="help">근무 요일: {trainer.workingDays.map(n=>weekdays[n]).join('·')}</p>}
+      {off&&<p className="inline-error" role="status">선택한 날짜는 트레이너의 휴무일이에요.</p>}
+      {error&&<div className="message error" role="alert">{error}</div>}
+      <p className="help">변경이 완료될 때까지 기존 예약은 유지돼요. 이용권 횟수는 추가로 차감되지 않아요.</p>
+      <div className="dialog-actions"><button autoFocus type="button" className="secondary" disabled={saving} onClick={onClose}>돌아가기</button><button type="submit" className="primary" disabled={saving||off||unchanged}>{saving?'변경하고 있어요…':'시간 변경'}</button></div>
+    </form>
+  </dialog>;
+}
+function NotificationSettings({onSessionExpired}:{onSessionExpired:(error:unknown)=>void}) {
+  const [preferences,setPreferences]=useState<NotificationPreferences|null>(null);
+  const [kakao,setKakao]=useState(false),[sms,setSms]=useState(false);
+  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false);
+  const [error,setError]=useState(''),[notice,setNotice]=useState('');
+  const [revision,setRevision]=useState(0);
+  useEffect(()=>{let active=true;setLoading(true);setError('');api<{preferences:NotificationPreferences}>('member/notification-preferences').then(({preferences:p})=>{if(active){setPreferences(p);setKakao(p.kakao);setSms(p.sms);}}).catch(e=>{if(active){if(e instanceof ApiError&&e.status===401)onSessionExpired(e);else setError(e instanceof Error?e.message:'수신 설정을 불러오지 못했어요.');}}).finally(()=>{if(active)setLoading(false);});return()=>{active=false;};},[revision]);
+  async function save(event:FormEvent<HTMLFormElement>){event.preventDefault();if(saving||loading||!preferences)return;setSaving(true);setError('');setNotice('');try{const result=await api<{preferences:NotificationPreferences}>('member/notification-preferences','PATCH',{kakao,sms});setPreferences(result.preferences);setNotice('수신 설정을 저장했어요. 언제든 변경할 수 있어요.');}catch(e){if(e instanceof ApiError&&e.status===401)onSessionExpired(e);else setError(e instanceof Error?e.message:'설정을 저장하지 못했어요.');}finally{setSaving(false);}}
+  return <section className="card"><h2>알림 수신 설정</h2><p className="section-copy">PT 피드백과 예약 안내를 받을 방법을 선택해 주세요.</p><p className="help">현재 카카오톡·문자 발송은 연결 준비 중이에요. 지금은 수신 설정만 저장되며 실제 알림은 발송되지 않아요.</p>{loading&&<p className="help" role="status">수신 설정을 불러오고 있어요…</p>}{error&&<div className="message error" role="alert">{error}</div>}{notice&&<div className="message success" role="status">{notice}</div>}{!loading&&!preferences?<button className="secondary full" onClick={()=>setRevision(n=>n+1)}>다시 불러오기</button>:<form className="form" onSubmit={save}><label className="preference"><input type="checkbox" checked={kakao} disabled={loading||saving} onChange={e=>{setKakao(e.target.checked);setNotice('');}}/><span>카카오톡으로 PT 피드백·예약 안내 받기 <small>(선택)</small></span></label><label className="preference"><input type="checkbox" checked={sms} disabled={loading||saving} onChange={e=>{setSms(e.target.checked);setNotice('');}}/><span>문자로 PT 피드백·예약 안내 받기 <small>(선택)</small></span></label><p className="help">선택하지 않아도 힘찬짐을 이용할 수 있어요. 광고·이벤트 수신 동의와는 별개예요.</p><button className="secondary full" disabled={loading||saving||!preferences}>{saving?'저장하고 있어요…':'수신 설정 저장'}</button>{preferences?.updatedAt&&<p className="help">마지막 변경: {time(preferences.updatedAt)}</p>}</form>}</section>;
 }
 function ReceiptImage({receipt}:{receipt:Receipt}) {
   const [enlarged,setEnlarged] = useState(false);
@@ -90,6 +128,7 @@ export default function Home() {
   const [selectedTrainer,setSelectedTrainer] = useState('');
   const [bookingDate,setBookingDate] = useState(koreanToday());
   const [cancelTarget,setCancelTarget] = useState<Reservation|null>(null);
+  const [rescheduleTarget,setRescheduleTarget] = useState<Reservation|null>(null);
 
   function report(error:unknown) {
     setError(error instanceof Error ? error.message : '처리하지 못했어요. 다시 시도해 주세요.');
@@ -111,7 +150,7 @@ export default function Home() {
       if (!(error instanceof ApiError && error.status === 401)) setError(error instanceof Error ? error.message : '서비스에 연결하지 못했어요.');
     }).finally(()=>setBooting(false));
   },[]);
-  useEffect(()=>{if(user) void refresh();},[user?.id]); // refresh when the signed-in account changes
+  useEffect(()=>{if(user&&!user.mustChangePassword) void refresh();else setDashboard(null);},[user?.id,user?.mustChangePassword]); // Fetch member data only after the initial password change.
   function move(next:Tab) {setTab(next);setError('');setNotice('');}
   function bookWith(id:number) {setSelectedPass(String(id));move('reservations');window.scrollTo({top:0,behavior:'smooth'});}
   async function authenticate(event:FormEvent<HTMLFormElement>) {
@@ -144,7 +183,7 @@ export default function Home() {
     event.preventDefault();const form = event.currentTarget;setBusy(true);setError('');setNotice('');
     const values = Object.fromEntries(new FormData(form));
     if(values.newPassword !== values.confirmPassword){report(new Error('새 비밀번호가 서로 달라요. 다시 확인해 주세요.'));setBusy(false);return;}
-    try {await api('auth/change-password','POST',{currentPassword:values.currentPassword,newPassword:values.newPassword});form.reset();inform('비밀번호를 변경했어요.');}catch(error){report(error);}finally{setBusy(false);}
+    try {const result=await api<{user:User}>('auth/change-password','POST',{currentPassword:values.currentPassword,newPassword:values.newPassword});form.reset();setUser(result.user);inform('비밀번호를 변경했어요.');}catch(error){report(error);}finally{setBusy(false);}
   }
   const activePasses = dashboard?.passes.filter(pass=>pass.expiresOn >= koreanToday() && pass.remainingSessions > 0) || [];
   const oldPasses = dashboard?.passes.filter(pass=>pass.expiresOn < koreanToday() || pass.remainingSessions <= 0) || [];
@@ -172,9 +211,9 @@ export default function Home() {
           <button className="primary full" disabled={busy}>{busy ? '처리하고 있어요…' : authMode === 'login'?'로그인':'가입하기'}</button>
         </form><p className="help auth-help">{authMode === 'signup' ? '가입 후 이용권 구매·등록은 힘찬짐 데스크에서 도와드려요.' : '로그인이 어려우시면 힘찬짐 데스크에 문의해 주세요.'}</p>
       </div><p className="footer-note">힘찬짐 · 회원 전용</p>
-    </main> : <>
-      <nav className="navigation" aria-label="회원 메뉴"><div>{([['passes','내 이용권'],['reservations','예약 관리'],['notes','운동 기록'],['profile','내 정보']] as [Tab,string][]).map(([key,label])=><button key={key} className={tab===key?'active':''} aria-current={tab===key?'page':undefined} onClick={()=>move(key)}><span className="nav-label"><Icon name={({passes:'ticket',reservations:'calendar',notes:'record',profile:'user'} as const)[key]}/>{label}</span></button>)}</div></nav>
-      <main id="main" className="content"><div className="page-heading"><div><p className="eyebrow">{dashboard?.member.name || user.name}님의 힘찬 하루</p><h1>{{passes:'내 이용권',reservations:'예약 관리',notes:'운동 기록',profile:'내 정보'}[tab]}</h1></div><button className="text-button" disabled={loading || busy} onClick={()=>{setError('');void refresh();}}>{loading?'불러오는 중…':'새로고침'}</button></div>
+    </main> : user.mustChangePassword ? <main id="main" className="auth-shell"><div className="auth-heading"><h1>내 비밀번호를 설정해 주세요</h1><p>데스크에서 받은 임시 비밀번호를 바꾸면 회원 서비스를 이용할 수 있어요.</p></div><section className="card auth-card">{error&&<div className="message error" role="alert">{error}</div>}<form className="form" onSubmit={savePassword}><Field label="임시 비밀번호"><input name="currentPassword" type="password" autoComplete="current-password" required maxLength={128}/></Field><Field label="새 비밀번호" help="8자 이상으로 입력해 주세요."><input name="newPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={128}/></Field><Field label="새 비밀번호 확인"><input name="confirmPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={128}/></Field><button className="primary full" disabled={busy}>{busy?'변경하고 있어요…':'비밀번호 설정하고 시작하기'}</button></form></section></main> : <>
+      <nav className="navigation" aria-label="회원 메뉴"><div>{([['passes','내 이용권'],['reservations','예약 관리'],['notes','PT 피드백'],['profile','내 정보']] as [Tab,string][]).map(([key,label])=><button key={key} className={tab===key?'active':''} aria-current={tab===key?'page':undefined} onClick={()=>move(key)}><span className="nav-label"><Icon name={({passes:'ticket',reservations:'calendar',notes:'record',profile:'user'} as const)[key]}/>{label}</span></button>)}</div></nav>
+      <main id="main" className="content"><div className="page-heading"><div><p className="eyebrow">{dashboard?.member.name || user.name}님의 힘찬 하루</p><h1>{{passes:'내 이용권',reservations:'예약 관리',notes:'PT 피드백',profile:'내 정보'}[tab]}</h1></div><button className="text-button" disabled={loading || busy} onClick={()=>{setError('');void refresh();}}>{loading?'불러오는 중…':'새로고침'}</button></div>
       {error && <div className="message error" role="alert">{error}</div>}{notice && <div className="message success" role="status">{notice}</div>}
       {loading && !dashboard && <div className="card" role="status">내 운동 정보를 불러오고 있어요.</div>}
       {!dashboard && !loading && <div className="card"><Empty title="운동 정보를 불러오지 못했어요">위의 새로고침을 눌러 다시 연결해 주세요.</Empty></div>}
@@ -193,17 +232,18 @@ export default function Home() {
             {trainerOff && <p className="inline-error" role="status">선택한 날짜는 {trainer?.name} 트레이너의 휴무일이에요. 날짜나 트레이너를 변경해 주세요.</p>}
             <p className="help">예약 취소는 횟수를 차감하지 않아요. 운동 완료·노쇼는 각각 1회 차감돼요.</p><button className="primary full" disabled={busy || trainerOff || !selectedPass || !selectedTrainer}>{busy?'예약하고 있어요…':'예약하기'}</button>
           </form>}</section>
-          <section className="card"><div className="section-head"><h2>예약된 운동 <span className="subtle">{booked.length}</span></h2></div>{booked.length ? <div className="reservation-list">{booked.map(item=><article className="reservation" key={item.id}><div><div className="row reservation-title"><h3>{time(item.startsAt)}</h3><span className="badge info">예약됨</span></div><p>{item.trainerName} 트레이너 · {item.typeName}</p>{item.note && <p className="note-preview">{item.note}</p>}{new Date(item.startsAt)<=new Date() && <p>시작된 예약의 변경은 데스크에 문의해 주세요.</p>}</div><button className="secondary small" onClick={()=>setCancelTarget(item)} disabled={busy || new Date(item.startsAt)<=new Date()}>{new Date(item.startsAt)<=new Date()?'데스크 문의':'예약 취소'}</button></article>)}</div>:<Empty title="예약된 운동이 없어요">위에서 원하는 트레이너와 시간을 선택해 주세요.</Empty>}</section>
+          <section className="card"><div className="section-head"><h2>예약된 운동 <span className="subtle">{booked.length}</span></h2></div>{booked.length ? <div className="reservation-list">{booked.map(item=><article className="reservation" key={item.id}><div><div className="row reservation-title"><h3>{time(item.startsAt)}</h3><span className="badge info">예약됨</span></div><p>{item.trainerName} 트레이너 · {item.typeName}</p>{item.note && <p className="note-preview">{item.note}</p>}{new Date(item.startsAt)<=new Date() && <p>시작된 예약의 변경은 데스크에 문의해 주세요.</p>}</div><div className="reservation-actions"><button className="secondary small" onClick={()=>setRescheduleTarget(item)} disabled={busy || new Date(item.startsAt)<=new Date()}>시간 변경</button><button className="secondary small" onClick={()=>setCancelTarget(item)} disabled={busy || new Date(item.startsAt)<=new Date()}>{new Date(item.startsAt)<=new Date()?'데스크 문의':'예약 취소'}</button></div></article>)}</div>:<Empty title="예약된 운동이 없어요">위에서 원하는 트레이너와 시간을 선택해 주세요.</Empty>}</section>
           <section className="card"><h2>지난 예약</h2>{past.length ? <div className="reservation-list">{past.map(item=><article className="reservation" key={item.id}><div><h3>{time(item.startsAt)}</h3><p>{item.trainerName} 트레이너 · {item.typeName}</p></div><span className={`badge ${item.status==='noshow'?'negative':item.status==='completed'?'positive':'muted'}`}>{statusNames[item.status]}</span></article>)}</div>:<Empty title="지난 예약이 없어요">완료·취소·노쇼 내역이 여기에 표시돼요.</Empty>}</section>
         </>}
-        {tab==='notes' && <section className="card"><h2 className="icon-label"><Icon name="record"/>트레이너가 남긴 운동 메모</h2><p className="section-copy">수업에서 배운 내용과 다음 운동을 확인해 보세요.</p>{notes.length ? <div className="notes-list">{notes.map(item=><article className="exercise-note" key={item.id}><div className="row"><h3>{time(item.startsAt)}</h3><span className="badge muted">{statusNames[item.status]}</span></div><p className="subtle">{item.trainerName} 트레이너 · {item.typeName}</p><p className="note-body">{item.note}</p></article>)}</div>:<Empty title="아직 운동 메모가 없어요">트레이너가 메모를 남기면 여기에 모아 보여드려요.</Empty>}</section>}
+        {tab==='notes' && <section className="card"><h2 className="icon-label"><Icon name="record"/>트레이너의 코칭</h2><p className="section-copy">오늘 배운 자세와 다음 운동에서 신경 쓸 점을 확인해 보세요.</p>{notes.length ? <div className="notes-list">{notes.map(item=><article className="exercise-note" key={item.id}><div className="row"><h3>{time(item.startsAt)}</h3><span className="badge muted">{statusNames[item.status]}</span></div><p className="subtle">{item.trainerName} 트레이너 · {item.typeName}</p><p className="note-body">{item.note}</p></article>)}</div>:<Empty title="아직 PT 피드백이 없어요">수업 후 트레이너가 남긴 피드백을 여기에서 확인할 수 있어요.</Empty>}</section>}
         {tab==='profile' && <>
-          <section className="card"><h2 className="icon-label"><Icon name="user"/>회원 정보</h2><form className="form" onSubmit={saveProfile} key={`${dashboard.member.name}-${dashboard.member.phone}`}><Field label="이름"><input name="name" required minLength={2} maxLength={50} defaultValue={dashboard.member.name} autoComplete="name"/></Field><Field label="연락처"><input name="phone" type="tel" required maxLength={20} defaultValue={dashboard.member.phone} autoComplete="tel"/></Field><Field label="이메일"><input value={user.email} readOnly className="readonly"/></Field><dl className="pass-details"><div><dt>가입일</dt><dd>{date(dashboard.member.joinedAt)}</dd></div></dl><button className="primary full" disabled={busy}>{busy?'저장하고 있어요…':'회원 정보 저장'}</button></form></section>
-          <section className="card"><h2>비밀번호 변경</h2><form className="form" onSubmit={savePassword}><Field label="현재 비밀번호"><input name="currentPassword" type="password" autoComplete="current-password" required maxLength={128}/></Field><Field label="새 비밀번호" help="8자 이상으로 입력해 주세요."><input name="newPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={128}/></Field><Field label="새 비밀번호 확인"><input name="confirmPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={128}/></Field><button className="secondary full" disabled={busy}>{busy?'변경하고 있어요…':'비밀번호 변경'}</button></form></section>
+          <section className="card"><h2 className="icon-label"><Icon name="user"/>회원 정보</h2><form className="form" onSubmit={saveProfile} key={`${dashboard.member.name}-${dashboard.member.phone}`}><Field label="이름"><input name="name" required minLength={2} maxLength={50} defaultValue={dashboard.member.name} autoComplete="name"/></Field><Field label="연락처"><input name="phone" type="tel" required maxLength={20} defaultValue={dashboard.member.phone} autoComplete="tel"/></Field><Field label="이메일"><input value={user.email} readOnly className="readonly"/></Field><dl className="pass-details"><div><dt>가입일</dt><dd>{date(dashboard.member.joinedAt)}</dd></div></dl><button className="primary full" disabled={busy}>{busy?'저장하고 있어요…':'회원 정보 저장/수정'}</button></form></section>
+          <NotificationSettings onSessionExpired={report}/><section className="card"><h2>비밀번호 변경</h2><form className="form" onSubmit={savePassword}><Field label="현재 비밀번호"><input name="currentPassword" type="password" autoComplete="current-password" required maxLength={128}/></Field><Field label="새 비밀번호" help="8자 이상으로 입력해 주세요."><input name="newPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={128}/></Field><Field label="새 비밀번호 확인"><input name="confirmPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={128}/></Field><button className="secondary full" disabled={busy}>{busy?'변경하고 있어요…':'비밀번호 변경'}</button></form></section>
         </>}
       </>}
       <p className="footer-note">이용권·예약 문의는 힘찬짐 데스크로 연락해 주세요.</p></main>
     </>}
+    {rescheduleTarget && user && !user.mustChangePassword && <RescheduleDialog reservation={rescheduleTarget} trainer={trainers.find(t=>t.id===rescheduleTarget.trainerId)} pass={dashboard?.passes.find(p=>p.id===rescheduleTarget.passId)} onClose={()=>setRescheduleTarget(null)} onSessionExpired={report} onChanged={async()=>{setRescheduleTarget(null);inform('예약 시간을 변경했어요. 이용권 횟수는 그대로예요.');await refresh();}}/>}
     {cancelTarget && <CancelDialog reservation={cancelTarget} busy={busy} onCancel={cancel} onKeep={()=>setCancelTarget(null)}/>}
   </>;
 }

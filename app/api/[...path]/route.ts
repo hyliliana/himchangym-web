@@ -5,13 +5,14 @@ const COOKIE = 'gym_session';
 const allowed = new Map([
   ['auth/signup', ['POST']], ['auth/login', ['POST']], ['auth/me', ['GET']],
   ['auth/logout', ['POST']], ['auth/change-password', ['POST']], ['catalog', ['GET']],
+  ['member/notification-preferences', ['GET','PATCH']],
   ['member/dashboard', ['GET']], ['member/profile', ['PATCH']], ['member/reservations', ['POST']],
 ]);
 
 async function proxy(request: NextRequest, context: {params: Promise<{path: string[]}>}) {
   const { path } = await context.params;
   const route = path.join('/');
-  const methods = allowed.get(route) ?? (/^member\/reservations\/\d+\/cancel$/.test(route) ? ['POST'] : /^member\/passes\/\d+\/receipts$/.test(route) ? ['GET'] : []);
+  const methods = allowed.get(route) ?? (/^member\/reservations\/\d+\/(cancel|reschedule)$/.test(route) ? ['POST'] : /^member\/passes\/\d+\/receipts$/.test(route) ? ['GET'] : []);
   if (!methods.includes(request.method)) return NextResponse.json({message: '이 요청은 회원 서비스에서 사용할 수 없어요.'}, {status: 404});
   if (request.method !== 'GET') {
     const origin = request.headers.get('origin');
