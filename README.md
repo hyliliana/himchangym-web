@@ -35,9 +35,13 @@ pnpm dev
 
 ## 디자인
 
-`DESIGN.md`는 [getdesign.kr Toss 카탈로그](https://getdesign.kr/services/toss)의 디자인 문서를 그대로 복사한 기준 문서입니다. 해당 카탈로그 작성 부분은 CC BY 4.0 표기를 따르며, 출처와 저작자 getdesign.kr을 표시합니다. Toss 및 해당 원자료의 상표·로고·폰트 등 원권리는 별도로 유지됩니다. 이 앱에는 Toss 로고나 전용 TPS 폰트를 포함하지 않았습니다.
+사용자가 승인한 최종 디자인은 [getdesign.kr 직방 카탈로그](https://getdesign.kr/services/zigbang)의 시각 언어입니다. `DESIGN.md`는 승인 작업본에 포함된 원문 685줄을 수정 없이 보존했습니다. 작성자 [ChangSik Yoon (CaesiumY)](https://github.com/CaesiumY/ko-design-md)의 카탈로그 서술·정규화 토큰은 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)을 따르며, 전문과 적용 범위는 `LICENSE-DESIGN-CONTENT`에 있습니다. 원자료의 상표·폰트·사진 등 권리는 별도입니다.
 
-blue500 `#3182F6`, grey900 `#191F28`, grey100 `#F2F4F6`, Pretendard 대체 서체, 4px 간격, 카드 radius16, 입력48/radius12, 기본 버튼56/radius16, 보조 버튼48/radius14를 적용했습니다. Pretendard는 jsDelivr CSS로 불러오며 네트워크 접근이 없으면 운영체제 한글 글꼴로 표시됩니다.
+직방의 발행 오렌지 `#FF6905`와 회색 팔레트, Pretendard, 4px 컨트롤 모서리, 12px 카드 모서리, 48px 기본 버튼과 52px 입력을 사용합니다. 주황색을 어둡게 바꾸지 않고 버튼 글자에 gray10 잉크를 써서 대비를 확보했습니다. 이 의미별 토큰 이름·모바일 분기·회원 업무 레이아웃은 힘찬짐의 적용 판단이며 직방이 발행한 역할·반응형 토큰이라고 주장하지 않습니다. `DESIGN-APPLICATION.md`에서 출처와 적용 판단을 확인할 수 있습니다.
+
+`public/brand/himchangym-symbol.svg`는 승인된 힘찬짐 H 덤벨 심볼입니다. 직방 로고·워드마크·부동산 카피는 사용하지 않았습니다. 메뉴·이용권·예약·기록·회원·영수증에는 텍스트와 함께 SVG 아이콘을 표시합니다. Pretendard는 SIL OFL 1.1 서체이며 기존 jsDelivr CSS로 불러옵니다. 외부 폰트에 연결할 수 없으면 운영체제 한글 글꼴로 표시됩니다.
+
+통합은 제출본 `b2681aae0a2e6ba9cebfe3d4f03a7e8cb5618b59`에서 `chief/himchangym-design-update` 브랜치로 분리했습니다. 승인 작업본과 현재 소스를 비교한 표현 패치만 적용했고 기존 영수증·인증·예약·프로필 API 코드는 보존했습니다. 제출본 브랜치 `chief/himchangym-web`은 그대로 유지합니다. 이 변경은 과제 재제출을 실행하지 않습니다.
 
 ## 확인
 
