@@ -271,3 +271,60 @@ h3 { font-size: 18px; line-height: 28px; font-weight: 700; }
   .reservation-actions button { flex: 1; }
   .dialog-actions > button { flex: 1; }
 }
+
+/* Shared member booking calendar and lesson audit detail. */
+.availability { padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-control); min-width: 0; }
+.calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.calendar-head h3 { font-size: 17px; }
+.calendar-head button { min-width: 44px; min-height: 44px; font-size: 24px; }
+.calendar-weekdays, .calendar-days { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 4px; }
+.calendar-weekdays { margin: 16px 0 4px; text-align: center; font-size: 12px; color: var(--ink-neutral); }
+.calendar-days button { position: relative; min-width: 0; min-height: 44px; padding: 8px 0 12px; background: var(--accent-soft); border: 1px solid transparent; border-radius: var(--radius-control); font-size: 14px; }
+.calendar-days button:disabled { background: transparent; color: var(--ink-disabled); opacity: 1; }
+.calendar-days button[aria-pressed=true] { background: var(--accent); border-color: var(--ink); color: var(--ink); font-weight: 700; }
+.calendar-days button[aria-current=date] { text-decoration: underline; text-underline-offset: 3px; }
+.availability-dot { position: absolute; bottom: 5px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.availability > .help { margin-top: 12px; }
+.available-times { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
+.available-times h4 { font-size: 14px; margin-bottom: 12px; }
+.slot-options { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 8px; }
+.slot-options button { min-height: 44px; background: var(--surface-secondary); border: 1px solid var(--line); border-radius: var(--radius-control); padding: 10px 8px; font-size: 14px; }
+.slot-options button.selected { background: var(--accent-soft); border-color: var(--accent); font-weight: 700; }
+.availability-empty { padding: 16px 0 4px; font-size: 14px; color: var(--ink-neutral); }
+.availability-error { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.slot-selection { padding: 12px; margin-top: 12px; background: var(--accent-soft); border-radius: var(--radius-control); font-size: 13px; line-height: 20px; }
+.lesson-detail-dialog { width: min(680px,calc(100vw - 24px)); max-width: 680px; }
+.detail-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.detail-heading h3 { font-size: 17px; }
+.lesson-summary { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.lesson-summary h3 { font-size: 18px; }
+.lesson-summary p { margin: 8px 0; }
+.change-summary { padding: 12px; background: var(--info-soft); border-radius: var(--radius-control); margin-top: 12px; }
+.change-summary p { margin-top: 8px; }
+.reservation .change-summary p { color: var(--ink); }
+.detail-feedback, .lesson-history { margin: 24px 0; }
+.detail-feedback h3 { font-size: 16px; margin-bottom: 8px; }
+.detail-feedback .note-body { overflow-wrap: anywhere; }
+.history-list { list-style: none; padding: 0; margin: 16px 0 0; }
+.history-entry { padding: 16px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.history-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; font-size: 14px; }
+.history-heading time, .history-actor { font-size: 12px; color: var(--ink-neutral); }
+.history-entry .history-actor { margin: 4px 0 12px; }
+.history-entry > .help { margin: 8px 0; }
+.history-change { margin: 12px 0; background: var(--surface-secondary); padding: 12px; border-radius: var(--radius-control); font-size: 13px; }
+.history-change > div { display: grid; grid-template-columns: 90px minmax(0,1fr); gap: 8px; margin: 4px 0; }
+.history-change dt { color: var(--ink-neutral); }
+.history-change dd { margin: 0; }
+.history-state { font-size: 13px; margin: 8px 0; }
+.feedback-diff { display: grid; gap: 12px; font-size: 13px; margin-top: 12px; }
+.feedback-diff > div { border-left: 2px solid var(--line); padding-left: 12px; }
+.feedback-diff > div:last-child { border-color: var(--accent); }
+.feedback-diff p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; }
+@media (max-width: 600px) {
+  .availability { padding: 12px; }
+  .calendar-weekdays, .calendar-days { gap: 2px; }
+  .calendar-days button { min-height: 40px; }
+  .slot-options { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .slot-options button { font-size: 12px; }
+  .history-change > div { grid-template-columns: 1fr; gap: 2px; margin-bottom: 8px; }
+}
