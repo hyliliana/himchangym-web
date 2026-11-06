@@ -53,3 +53,6 @@ Each frontend own package.json, lockfile, Next.js app, README. Use versions from
 - Receipt = {id,fileName,mimeType,dataUrl,createdAt}
 - JPG/PNG/WebP only, actual file magic/MIME check, filename up to 120 characters, decoded file up to 2MB, up to 5 files per pass, total decoded files per pass <=3,000,000 bytes.
 - Stored permanently as bytea in hw2.pass_receipts with pass/uploader foreign keys; no update/delete/OCR or payment verification.
+
+## Trainer approval (2026-11-06)
+Reservation additionally returns `approval: 'pending'|'approved'|'rejected'`. `status` retains its existing four values; rejection is `status:'cancelled', approval:'rejected'`. Bookings and reschedules with a linked trainer require approval; legacy reservations and trainers without a linked staff account remain approved. Member cards treat a missing approval field as the legacy approved state. Creation/reschedule success copy uses the returned approval when present and asks the member to check current reservation details when the old server omits it.
