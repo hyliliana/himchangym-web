@@ -14,7 +14,7 @@ const weekdays = ['일','월','화','수','목','금','토'];
 const statusNames = {booked:'예약됨', completed:'운동 완료', cancelled:'취소', noshow:'노쇼'};
 function reservationLabel(item:Reservation) {
   if(item.approval==='rejected')return '승인 거절';
-  if(item.status==='booked')return item.approval==='pending'?'트레이너 승인 대기':'예약 승인 완료';
+  if(item.status==='booked')return item.approval==='pending'?'트레이너 승인 대기':'예약 확정';
   return statusNames[item.status];
 }
 function ReservationBadge({item}:{item:Reservation}) {
@@ -24,7 +24,7 @@ function ReservationBadge({item}:{item:Reservation}) {
 function bookingNotice(item:Reservation|undefined,changed=false) {
   const action=changed?'예약 시간을 변경했어요.':'예약을 접수했어요.';
   if(item?.approval==='pending')return `${action} 트레이너 승인 대기 중이에요. 승인 후 예약이 확정돼요.`;
-  if(item?.approval==='approved')return `${action} 예약 승인이 완료됐어요.`;
+  if(item?.approval==='approved')return `${action} 예약이 확정됐어요.`;
   if(item?.approval==='rejected')return `${action} 승인 거절 상태예요. 예약 내역을 확인해 주세요.`;
   return `${action} 아래 예약 내역에서 현재 상태를 확인해 주세요.`;
 }
