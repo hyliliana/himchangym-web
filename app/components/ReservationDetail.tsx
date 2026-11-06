@@ -14,7 +14,7 @@ function HistoryEntry({entry}:{entry:ReservationHistory}) {
     {entry.event==='requested'&&<p className="help">변경을 요청했어요. 승인 전까지 기존 예약 일정이 유지돼요.</p>}
     {entry.event==='rejected_change'&&<p className="help">변경 요청이 거절됐어요. 기존 예약 일정이 유지돼요.</p>}
     {entry.event==='withdrawn'&&<p className="help">변경 요청을 철회했어요. 기존 예약 일정이 유지돼요.</p>}
-    {fields.includes('startsAt')&&<dl className="history-change"><div><dt>{entry.event==='requested'||entry.event==='rejected_change'||entry.event==='withdrawn'?'기존 일정':'변경 전 일정'}</dt><dd>{before.startsAt?auditTime(before.startsAt):'—'}</dd></div><div><dt>{entry.event==='requested'||entry.event==='rejected_change'||entry.event==='withdrawn'?'요청 일정':'변경 후 일정'}</dt><dd>{after.startsAt?auditTime(after.startsAt):'—'}</dd></div></dl>}
+    {fields.includes('startsAt')&&<dl className="history-change"><div><dt>{entry.event==='requested'?'기존 일정':entry.event==='rejected_change'||entry.event==='withdrawn'?'요청했던 일정':'변경 전 일정'}</dt><dd>{before.startsAt?auditTime(before.startsAt):'—'}</dd></div><div><dt>{entry.event==='requested'?'요청 일정':entry.event==='rejected_change'||entry.event==='withdrawn'?'유지한 기존 일정':'변경 후 일정'}</dt><dd>{after.startsAt?auditTime(after.startsAt):'—'}</dd></div></dl>}
     {fields.includes('status')&&<p className="history-state">수업 상태: {before.status?statusNames[before.status]:'—'} → {after.status?statusNames[after.status]:'—'}</p>}
     {fields.includes('approval')&&<p className="history-state">예약 승인: {before.approval?approvalNames[before.approval]:'—'} → {after.approval?approvalNames[after.approval]:'—'}</p>}
     {fields.includes('note')&&<div className="feedback-diff"><div><strong>이전 피드백</strong><p>{before.note||'작성된 피드백 없음'}</p></div><div><strong>변경한 피드백</strong><p>{after.note||'작성된 피드백 없음'}</p></div></div>}
